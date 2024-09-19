@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcul du risque cardiovasculaire</title>
+    <style>
+        /* Style des antécédents médicaux */
+        .medical-history label {
+            font-size: 0.9em;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .medical-history input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        /* Style général */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        #riskForm {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #resultSection {
+            display: none;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        #alertMessage {
+            color: orange;
+            font-weight: bold;
+        }
+        .faible-risque { color: green; }
+        .modere-risque { color: #FFA500; }
+        .eleve-risque { color: red; }
+        .tres-eleve-risque { color: darkred; }
+        .smiley-content {
+            font-size: 24px;
+            color: green;
+        }
+        .smiley-triste {
+            font-size: 24px;
+            color: red;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #printFields {
+    display: none; /* Cacher par défaut */
+}
+
+@media print {
+    #printFields {
+        display: block; /* Afficher uniquement lors de l'impression */
+    }
+    button {
+        display: none;
+    }
+}
+
+
+
+    </style>
+</head>
+<body>
+
+<h1>Évaluation du risque cardiovasculaire</h1>
+
+<form id="riskForm">
+    <label for="age">Âge (années) :</label>
+    <input type="number" id="age" name="age" required><br><br>
+
+    <label for="ldlc">LDL-c (g/L) :</label>
+    <input type="text" id="ldlc" name="ldlc" pattern="^\d+(\.|,)?\d*$" title="Veuillez entrer un nombre valide" required><br><br>
+
+    <label for="totalCholesterol">Cholestérol total :</label>
+    <label>Unité du cholestérol total :</label>
+    <input type="radio" id="unit_mmol" name="cholesterolUnit" value="mmol" checked>
+    <label for="unit_mmol">mmol/L</label>
+    <input type="radio" id="unit_g" name="cholesterolUnit" value="g">
+    <label for="unit_g">g/L</label><br><br>
+    <input type="text" id="totalCholesterol" name="totalCholesterol" pattern="^\d+(\.|,)?\d*$" title="Veuillez entrer un nombre valide" required><br><br>
+
+    <label for="systolicBP">Pression artérielle systolique (mmHg) :</label>
+    <input type="number" id="systolicBP" name="systolicBP" required><br><br>
+
+    <label for="sex">Sexe :</label>
+    <select id="sex" name="sex" required>
+        <option value="Homme">Homme</option>
+        <option value="Femme">Femme</option>
+    </select><br><br>
+
+    <label for="smoker">Fumeur :</label>
+    <select id="smoker" name="smoker" required>
+        <option value="non">Non</option>
+        <option value="oui">Oui</option>
+    </select><br><br>
+
+    <!-- Cases à cocher pour les antécédents médicaux -->
+    <label>Antécédents médicaux :</label><br>
+    <div class="medical-history">
+        <label><input type="checkbox" id="cvd" name="cvd"> Antécédents de MCV documentée</label><br>
+        <label><input type="checkbox" id="diabetesTarget" name="diabetesTarget"> Diabète avec atteinte d'organe cible ou autre facteur de risque majeur</label><br>
+        <label><input type="checkbox" id="renalFailure" name="renalFailure"> Insuffisance rénale sévère</label><br>
+        <label><input type="checkbox" id="longTermDiabetes" name="longTermDiabetes"> Diabète de longue durée sans atteinte d'organe cible</label><br>
+        <label><input type="checkbox" id="familialHypercholesterolemia" name="familialHypercholesterolemia"> Hypercholestérolémie familiale sans MCV documentée</label><br><br>
+    </div>
+
+    <button type="submit">Calculer le risque</button>
+</form>
+
+<div id="resultSection">
+    <h2>Résultats de l'évaluation du risque cardiovasculaire</h2>
+
+    <div id="summary">
+        <h3>Informations sur le patient</h3>
+        <p>Âge : <span id="ageResult"></span></p>
+        <p>Cholestérol total : <span id="totalCholesterolResult"></span> mmol/L</p>
+        <p>Pression artérielle systolique : <span id="systolicBPResult"></span> mmHg</p>
+        <p>Sexe : <span id="sexResult"></span></p>
+        <p>Fumeur : <span id="smokerResult"></span></p>
+    </div>
+
+
+    <div id="alerts">
+        <h3>Alertes</h3>
+        <p id="alertMessage"></p>
+    </div>
+
+    <div id="results">
+        <h3>SCORE RISK et objectif LDL-c</h3>
+        <p>SCORE RISK : <span id="scoreRiskResult"></span>%</p>
+        <p>Antécédents Notables : <span id="notableHistoryResult"></span></p>
+        <p>Catégorie de risque : <span id="riskCategoryResult"></span></p>
+        <p>Votre LDL-c (<span id="ldlcResult"></span>) est : <span id="ldlcStatusResult"></span> <span id="ldlcSmiley"></span></p>
+    </div>
+
+    <button onclick="window.location.reload()">Recommencer</button>
+    <button onclick="printPage()">Imprimer</button>
+    <button onclick="window.open('https://kitpatient.fr/?goto_resource=272', '_blank')">MHD</button>
+    <button onclick="window.open('https://pharmacomedicale.org/medicaments/par-specialites/item/statines', '_blank')">Choisir un traitement</button>
+
+<!-- Champs affichés uniquement à l'impression -->
+<div id="printFields">
+    <p>Nom : __________________________________________</p>
+    <p>Prénom : _______________________________________</p>
+    <p>Date de naissance : ____________________________</p>
+    <p>Date d'évaluation : <span id="printDateResult"></span></p>
+
+</div>
+
+</div>
+
+<script>
+document.getElementById("riskForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    document.getElementById("riskForm").style.display = "none";
+
+    var ldlcInput = document.getElementById("ldlc");
+    var totalCholesterolInput = document.getElementById("totalCholesterol");
+
+    ldlcInput.value = ldlcInput.value.replace(',', '.');
+    totalCholesterolInput.value = totalCholesterolInput.value.replace(',', '.');
+
+    var age = parseInt(document.getElementById("age").value);
+    var totalCholesterol = parseFloat(document.getElementById("totalCholesterol").value);
+    var systolicBP = parseInt(document.getElementById("systolicBP").value);
+    var sex = document.getElementById("sex").value;
+    var smoker = document.getElementById("smoker").value;
+    var isSmoker = (smoker === "oui");
+    var ldlc = parseFloat(ldlcInput.value);
+
+    var unit = document.querySelector('input[name="cholesterolUnit"]:checked').value;
+    if (unit === 'g') {
+        totalCholesterol = totalCholesterol * 2.58;
+    }
+
+    if (age < 40 || age > 75) {
+        alert("L'âge doit être compris entre 40 et 75 ans.");
+        window.location.reload();
+        return;
+    }
+
+    let message = "";
+    if (systolicBP < 120 || systolicBP > 180) {
+        message += "La pression artérielle est hors des recommandations ESC.";
+    }
+    if (totalCholesterol < 4 || totalCholesterol > 7) {
+        message += " Le cholestérol total est hors des recommandations ESC.";
+    }
+
+    let notableHistory = [];
+    if (document.getElementById("cvd").checked) notableHistory.push("Antécédents de MCV documentée");
+    if (document.getElementById("diabetesTarget").checked) notableHistory.push("Diabète avec atteinte d'organe cible ou autre facteur de risque majeur");
+    if (document.getElementById("renalFailure").checked) notableHistory.push("Insuffisance rénale sévère");
+    if (document.getElementById("longTermDiabetes").checked) notableHistory.push("Diabète de longue durée sans atteinte d'organe cible");
+    if (document.getElementById("familialHypercholesterolemia").checked) notableHistory.push("Hypercholestérolémie familiale sans MCV documentée");
+
+    let historyText = notableHistory.length > 0 ? notableHistory.join(", ") : "Aucun";
+
+    var scoreRisk = calculateScoreRisk(age, sex, smoker, systolicBP, totalCholesterol);
+
+    document.getElementById("ageResult").textContent = age;
+    document.getElementById("totalCholesterolResult").textContent = totalCholesterol;
+    document.getElementById("systolicBPResult").textContent = systolicBP;
+    document.getElementById("sexResult").textContent = sex;
+    document.getElementById("smokerResult").textContent = smoker === "oui" ? "Oui" : "Non";
+    document.getElementById("notableHistoryResult").textContent = historyText;
+
+    // Ajouter la date d'impression automatiquement
+    document.getElementById("printDateResult").textContent = new Date().toLocaleDateString();
+
+    if (message) {
+        document.getElementById("alertMessage").textContent = message;
+        document.getElementById("alertMessage").style.color = "orange";
+    } else {
+        document.getElementById("alertMessage").textContent = "Aucune alerte";
+        document.getElementById("alertMessage").style.color = "black";
+    }
+
+    document.getElementById("scoreRiskResult").textContent = scoreRisk;
+
+    let riskCategory, ldlcTarget, ldlcStatus;
+
+if (scoreRisk >= 10) {
+    riskCategory = "Très élevé";
+    ldlcTarget = 0.55; // Utiliser uniquement la valeur numérique ici
+    document.getElementById("riskCategoryResult").classList.add("tres-eleve-risque");
+} else if (scoreRisk >= 5 && scoreRisk < 10) {
+    riskCategory = "Élevé";
+    ldlcTarget = 0.7; // Utiliser uniquement la valeur numérique ici
+    document.getElementById("riskCategoryResult").classList.add("eleve-risque");
+} else if (scoreRisk >= 1.0 && scoreRisk < 5) {
+    riskCategory = "Modéré";
+    ldlcTarget = 1.0; // Utiliser uniquement la valeur numérique ici
+    document.getElementById("riskCategoryResult").classList.add("modere-risque");
+} else {
+    riskCategory = "Bas";
+    ldlcTarget = 1.16; // Utiliser uniquement la valeur numérique ici
+    document.getElementById("riskCategoryResult").classList.add("faible-risque");
+}
+
+document.getElementById("ldlcResult").textContent = ldlc;
+
+// Comparaison correcte avec la valeur numérique de lldcTarget
+if (ldlc <= ldlcTarget) {
+    ldlcStatus = `à l'objectif (< ${ldlcTarget} g/L)`; // Ajouter "<" ici pour l'affichage
+    document.getElementById("ldlcSmiley").textContent = "😊";
+    document.getElementById("ldlcSmiley").classList.add("smiley-content");
+} else {
+    ldlcStatus = `au-dessus de l'objectif (< ${ldlcTarget} g/L)`; // Ajouter "<" ici pour l'affichage
+    document.getElementById("ldlcSmiley").textContent = "😟";
+    document.getElementById("ldlcSmiley").classList.add("smiley-triste");
+}
+
+document.getElementById("riskCategoryResult").textContent = riskCategory;
+document.getElementById("ldlcStatusResult").textContent = ldlcStatus;
+
+    document.getElementById("resultSection").style.display = "block";
+});
+
+function printPage() {
+    window.print();
+}
+
+function calculateScoreRisk(age, sex, smoker, systolicBP, totalCholesterol) {
+    let scoreRisk = 0;
+    
+    if (age >= 40 && age <= 49) age = 40;
+    else if (age >= 50 && age <= 54) age = 50;
+    else if (age >= 55 && age <= 59) age = 55;
+    else if (age >= 60 && age <= 64) age = 60;
+    else if (age >= 65 && age <= 69) age = 65;
+    else if (age >= 70 && age <= 75) age = 70;
+
+    let cholesterolCategory;
+    if (totalCholesterol < 5) cholesterolCategory = 4;
+    else if (totalCholesterol >= 5 && totalCholesterol < 6) cholesterolCategory = 5;
+    else if (totalCholesterol >= 6 && totalCholesterol < 7) cholesterolCategory = 6;
+    else cholesterolCategory = 7;
+
+    let bpCategory;
+    if (systolicBP < 140) bpCategory = 120;
+    else if (systolicBP >= 140 && systolicBP < 160) bpCategory = 140;
+    else if (systolicBP >= 160 && systolicBP < 180) bpCategory = 160;
+    else bpCategory = 180;
+
+    let sexKey = sex === "Homme" ? "Homme" : "Femme";
+    let smokerKey = smoker ? "fumeur" : "non-fumeur";
+
+    const scoreChart = {
+        "Homme": {
+            "non-fumeur": {
+        40: {120: [0, 0, 0, 0], 140: [0, 0, 0, 0], 160: [0, 0, 1, 1], 180: [1, 1, 1, 1]},
+        50: {120: [0, 1, 1, 1], 140: [1, 1, 1, 1], 160: [1, 1, 2, 2], 180: [2, 2, 3, 3]},
+        55: {120: [1, 1, 1, 2], 140: [1, 2, 2, 2], 160: [2, 2, 3, 3], 180: [3, 4, 4, 5]},
+        60: {120: [2, 2, 2, 3], 140: [3, 3, 3, 4], 160: [4, 4, 5, 5], 180: [5, 6, 7, 8]},
+        65: {120: [3, 4, 5, 5], 140: [5, 5, 6, 7], 160: [6, 7, 8, 9], 180: [8, 9, 10, 12]},
+        70: {120: [7, 8, 9, 10], 140: [8, 9, 10, 12], 160: [10, 11, 13, 14], 180: [12, 14, 15, 17]}
+    },
+    "fumeur": {
+        40: {120: [0, 0, 0, 1], 140: [1, 1, 1, 1], 160: [1, 1, 1, 2], 180: [2, 2, 3, 3]},
+        50: {120: [1, 1, 1, 2], 140: [1, 2, 2, 3], 160: [2, 3, 3, 4], 180: [4, 5, 5, 6]},
+        55: {120: [2, 2, 2, 3], 140: [3, 3, 3, 4], 160: [4, 4, 5, 6], 180: [6, 7, 8, 9]},
+        60: {120: [3, 4, 4, 5], 140: [4, 5, 6, 7], 160: [6, 7, 8, 9], 180: [8, 10, 11, 13]},
+        65: {120: [5, 6, 7, 8], 140: [7, 8, 9, 11], 160: [9, 11, 12, 14], 180: [12, 14, 16, 18]},
+        70: {120: [10, 11, 12, 14], 140: [12, 13, 15, 17], 160: [15, 16, 18, 20], 180: [18, 20, 22, 24]}
+    }
+        },
+
+        
+        "Femme": {
+            "non-fumeur": {
+        40: {120: [0, 0, 0, 0], 140: [0, 0, 0, 0], 160: [0, 0, 0, 0], 180: [0, 0, 0, 0]},
+        50: {120: [0, 0, 0, 0], 140: [0, 0, 0, 0], 160: [0, 0, 1, 1], 180: [1, 1, 1, 1]},
+        55: {120: [0, 0, 0, 1], 140: [1, 1, 1, 1], 160: [1, 1, 1, 1], 180: [1, 1, 2, 2]},
+        60: {120: [1, 1, 1, 1], 140: [1, 1, 1, 2], 160: [2, 2, 2, 2], 180: [2, 3, 3, 3]}, 
+        65: {120: [2, 2, 2, 2], 140: [2, 3, 3, 3], 160: [3, 3, 4, 4], 180: [4, 4, 5, 5]},
+        70: {120: [4, 4, 5, 5], 140: [5, 5, 6, 6], 160: [6, 6, 7, 7], 180: [7, 8, 8, 9]}
+            },
+            "fumeur": {
+        40: {120: [0, 0, 0, 0], 140: [0, 0, 0, 0], 160: [0, 0, 0, 1], 180: [1, 1, 1, 1]}, 
+        50: {120: [0, 0, 0, 1], 140: [1, 1, 1, 1], 160: [1, 1, 1, 2], 180: [2, 2, 2, 3]}, 
+        55: {120: [1, 1, 1, 1], 140: [1, 1, 1, 2], 160: [2, 2, 2, 3], 180: [3, 3, 3, 4]}, 
+        60: {120: [2, 2, 2, 2], 140: [2, 2, 3, 3], 160: [3, 3, 4, 4], 180: [4, 5, 5, 6]},
+        65: {120: [3, 3, 3, 4], 140: [4, 4, 5, 5], 160: [5, 6, 6, 7], 180: [7, 7, 8, 9]}, 
+        70: {120: [6, 6, 7, 7], 140: [7, 8, 8, 9], 160: [9, 9, 10, 11], 180: [11, 11, 12, 13]}
+        }
+        }
+        };
+
+    scoreRisk = scoreChart[sexKey][smokerKey][age][bpCategory][cholesterolCategory - 4];
+
+    return scoreRisk;
+}
+
+</script>
+<div style="text-align: center; margin-top: 12px; font-size: 0.9em; color: red;"></div>
+    <p><strong>Version test, prenez garde en utilisant cet outil, GS</strong></p>
+</div>
+</body>
+</html>
